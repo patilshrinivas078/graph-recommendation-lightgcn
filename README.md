@@ -54,6 +54,7 @@ indices.
 
 ## Usage
 
+Install dependencies using uv
 ```bash
 uv sync
 ```
@@ -77,6 +78,6 @@ python scripts/compare_models.py --artifacts-dir artifacts
 ```
 
 Reads the saved history/metrics JSON and writes a comparison table plus training-curve and bar-chart plots to `artifacts/`.
-```
+
 
 
