@@ -53,5 +53,27 @@ class MatrixFactorization(nn.Module):
         reg_embeddings = torch.cat([self.user_embedding(users), self.item_embedding(pos_items), self.item_embedding(neg_items)])
         return bpr_loss(pos_scores, neg_scores, reg_embeddings, lambda_reg=lambda_reg)
 
+class LightGCNRecommender(nn.Module):
+    def __init__(self, num_users: int, num_items: int, embedding_dim: int = 64, num_layers: int = 3):
+        super().__init__()
+        self.num_users = num_users
+        self.num_items = num_items
+        self.gnn = LightGCN(num_nodes=num_users + num_items, embedding_dim=embedding_dim, num_layers=num_layers)
 
+    def get_embeddings(self, edge_index: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        emb = self.gnn.get_embedding(edge_index)
+        return emb[: self.num_users], emb[self.num_users :]
 
+    def score_all(self, users: torch.Tensor, edge_index: torch.Tensor | None = None) -> torch.Tensor:
+        assert edge_index is not None, "LightGCNRecommender.score_all requires edge_index"
+        user_emb, item_emb = self.get_embeddings(edge_index)
+        return user_emb[users] @ item_emb.T
+
+    def compute_loss(self, users: torch.Tensor, pos_items: torch.Tensor, neg_items: torch.Tensor, edge_index: torch.Tensor | None = None, lambda_reg: float = 1e-4) -> torch.Tensor:
+        assert edge_index is not None, "LightGCNRecommender.compute_loss requires edge_index"
+        pos_idx = pos_items + self.num_users
+        neg_idx = neg_items + self.num_users
+        edge_label_index = torch.cat([torch.stack([users, pos_idx]), torch.stack([users, neg_idx])], dim=1)
+        rank = self.gnn(edge_index, edge_label_index)
+        pos_rank, neg_rank = rank.chunk(2)
+        return self.gnn.recommendation_loss(pos_rank, neg_rank, node_id=edge_label_index.unique(), lambda_reg=lambda_reg)
