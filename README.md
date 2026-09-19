@@ -79,5 +79,8 @@ python scripts/compare_models.py --artifacts-dir artifacts
 
 Reads the saved history/metrics JSON and writes a comparison table plus training-curve and bar-chart plots to `artifacts/`.
 
+## Findings and limitations
+
+On this dataset, matrix factorization was both stronger and cheaper: fewer moving parts, no graph construction, and no message-passing cost per batch. LightGCN's relative disadvantage doesn't rule out graph methods in general, it's more likely that MovieLens-1M is too small and too dense for multi-hop smoothing to add much beyond what direct pairwise embeddings already learn, and that the LightGCN side of this comparison was under-tuned (layer count, embedding dimension, and regularization were all left at defaults).
 
 
